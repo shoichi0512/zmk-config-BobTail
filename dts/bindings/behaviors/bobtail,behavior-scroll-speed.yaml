@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MIT
+description: Adjust the trackball wheel speed by one bounded step
+compatible: "bobtail,behavior-scroll-speed"
+include: one_param.yaml
