@@ -9,12 +9,21 @@
 2. GitHubを使用する設定元を選び、自分のアカウントで連携を許可します。
 3. `shoichi0512/zmk-config-BobTail` の `main` を選びます。
 4. `config/BobTail.keymap` を開きます。配列図には `config/BobTail.json` を使います。
-5. 記号には `JP_AT`（@）、`JP_DQT`（"）、`JP_UNDER`（_）など、`JP_`で始まる定義を選びます。
+5. 記号には `JIS_AT`（@）、`JIS_DQT`（"）、`JIS_UNDER`（_）など、`JIS_`で始まるマクロ動作を選びます。
 
-`config/keys_jp.h` がJIS用のキー定義です。zmk-locale-generatorと同じ形式のHID式を使ったローカル定義です。
-Keymap Editor上での選択肢と表示は、接続後に確認してください。
-半角/全角は `JP_ZKHK`、変換は `JP_HENKAN`、無変換は `JP_MUHENKAN` です。
+JIS用の動作は `config/BobTail.keymap` の `macros` に登録しています。
+公開版Keymap Editorは、独自ヘッダー内のJISキーコードを選択肢として読み込みません。
+そのため、名前付きの標準ZMKマクロを使い、エディターから動作を選択できる形にしています。
+画面では `JIS_AT` や `&jp_at` という名前で表示される場合があります。
+通常の `&kp` のキーコード欄ではなく、割り当てる動作としてJIS用マクロを選びます。
+`MACROS` タブでは各動作の内容も確認できます。
+半角/全角は `JIS_ZKHK`、変換は `JIS_HENKAN`、無変換は `JIS_MUHENKAN` です。
 IMEの動作はPCのIME設定にも依存します。
+
+各マクロは、キーを押したときに押下、離したときに解放を送ります。
+押している間のOSのキーリピートと、Shift/Ctrl等との併用を想定した構成です。
+キーコードを指定する必要があるLayer-TapやMod-Tapの引数には、これらのマクロを直接指定できません。
+JIS記号を短押し側に使いたい場合は、その組み合わせ専用のHold-Tap動作を定義します。
 
 ## 今回の変更
 
@@ -57,6 +66,6 @@ ZMK Studioで配列を保存したことがある場合は、書き込み後も�
 
 参考:
 
-- https://github.com/nickcoutsos/keymap-editor/wiki/Keycodes-for-other-locales
+- https://zmk.dev/docs/keymaps/behaviors/macros
 - https://zmk.dev/docs/keymaps/behaviors/hold-tap
 - https://zmk.dev/docs/features/studio
