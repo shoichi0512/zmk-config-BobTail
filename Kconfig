@@ -1,2 +1,10 @@
 # SPDX-License-Identifier: MIT
 rsource "drivers/pmw3610/Kconfig"
+
+config BOBTAIL_KEEP_HFXO_ON
+    bool "Keep the HF crystal clock running for battery stability diagnosis"
+    depends on CLOCK_CONTROL_NRF && SOC_SERIES_NRF52X && ZMK_SPLIT_ROLE_CENTRAL
+    default n
+    help
+      Keep one reference to the HF crystal clock, as USB attachment does.
+      This avoids clock start/stop on battery but increases power consumption.
