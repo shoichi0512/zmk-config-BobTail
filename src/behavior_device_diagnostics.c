@@ -17,6 +17,10 @@
 #include <dt-bindings/zmk/keys.h>
 #include <zmk/events/keycode_state_changed.h>
 
+#if IS_ENABLED(CONFIG_ZMK_BLE)
+#include <zephyr/bluetooth/conn.h>
+#endif
+
 #if IS_ENABLED(CONFIG_HWINFO)
 #include <zephyr/drivers/hwinfo.h>
 #endif
@@ -35,10 +39,65 @@ static atomic_t diagnostic_busy;
 static enum diagnostic_phase phase;
 static uint32_t command;
 static uint32_t boot_reset_cause;
-static char diagnostic_text[40];
+static char diagnostic_text[128];
 static size_t text_length;
 static size_t text_position;
 static uint32_t pressed_key;
+
+struct diagnostic_connection_state {
+    uint32_t host_connections;
+    uint32_t host_disconnections;
+    uint32_t host_last_reason;
+    uint32_t host_last_disconnect_seconds;
+    uint32_t split_disconnections;
+};
+
+static struct diagnostic_connection_state connection_state;
+static struct k_spinlock connection_lock;
+
+#if IS_ENABLED(CONFIG_ZMK_BLE)
+static void diagnostic_connected(struct bt_conn *conn, uint8_t error) {
+    struct bt_conn_info info;
+    if (error != 0 || bt_conn_get_info(conn, &info) != 0 ||
+        info.type != BT_CONN_TYPE_LE || info.role != BT_CONN_ROLE_PERIPHERAL) {
+        return;
+    }
+    /* PC links use the peripheral role; the right half is central to the left. */
+    k_spinlock_key_t key = k_spin_lock(&connection_lock);
+    connection_state.host_connections++;
+    k_spin_unlock(&connection_lock, key);
+}
+
+static void diagnostic_disconnected(struct bt_conn *conn, uint8_t reason) {
+    struct bt_conn_info info;
+    if (bt_conn_get_info(conn, &info) != 0 || info.type != BT_CONN_TYPE_LE) {
+        return;
+    }
+    uint32_t seconds = (uint32_t)(k_uptime_get() / 1000);
+    k_spinlock_key_t key = k_spin_lock(&connection_lock);
+    if (info.role == BT_CONN_ROLE_PERIPHERAL) {
+        connection_state.host_disconnections++;
+        connection_state.host_last_reason = reason;
+        connection_state.host_last_disconnect_seconds = seconds;
+    } else if (info.role == BT_CONN_ROLE_CENTRAL) {
+        connection_state.split_disconnections++;
+    }
+    k_spin_unlock(&connection_lock, key);
+}
+
+/* Observe existing events only: no polling, new GATT requests, or flash writes. */
+BT_CONN_CB_DEFINE(bobtail_diagnostics) = {
+    .connected = diagnostic_connected,
+    .disconnected = diagnostic_disconnected,
+};
+#endif
+
+static struct diagnostic_connection_state connection_snapshot(void) {
+    k_spinlock_key_t key = k_spin_lock(&connection_lock);
+    struct diagnostic_connection_state snapshot = connection_state;
+    k_spin_unlock(&connection_lock, key);
+    return snapshot;
+}
 
 static void diagnostic_work_handler(struct k_work *work);
 K_WORK_DELAYABLE_DEFINE(diagnostic_work, diagnostic_work_handler);
@@ -74,6 +133,11 @@ static uint32_t diagnostic_keycode(char c) {
     case 'u': return U;
     case 'r': return R;
     case 'h': return H;
+    case 'c': return C;
+    case 'd': return D;
+    case 'e': return E;
+    case 't': return T;
+    case 's': return S;
     case ' ': return SPACE;
     case '\n': return ENTER;
     default: return 0;
@@ -107,9 +171,16 @@ static void diagnostic_work_handler(struct k_work *work) {
     }
 
     if (phase == DIAGNOSTIC_CAPTURE) {
-        int length = snprintf(diagnostic_text, sizeof(diagnostic_text), "u %u r %u h %u\n",
+        struct diagnostic_connection_state snapshot = connection_snapshot();
+        int length = snprintf(diagnostic_text, sizeof(diagnostic_text),
+                              "u %u r %u h %u c %u d %u e %u t %u s %u\n",
                               (unsigned int)(uint32_t)(k_uptime_get() / 1000),
-                              (unsigned int)boot_reset_cause, clock_status());
+                              (unsigned int)boot_reset_cause, clock_status(),
+                              (unsigned int)snapshot.host_connections,
+                              (unsigned int)snapshot.host_disconnections,
+                              (unsigned int)snapshot.host_last_reason,
+                              (unsigned int)snapshot.host_last_disconnect_seconds,
+                              (unsigned int)snapshot.split_disconnections);
         if (length < 0 || (size_t)length >= sizeof(diagnostic_text)) {
             atomic_clear(&diagnostic_busy);
             return;
