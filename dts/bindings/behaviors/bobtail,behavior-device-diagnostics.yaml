@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MIT
+description: Type device uptime, boot reset cause and clock diagnostic state on demand
+compatible: "bobtail,behavior-device-diagnostics"
+include: one_param.yaml
