@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+#include <errno.h>
 #include <string.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
@@ -7,9 +8,11 @@
 #include <zmk/ble.h>
 #include <bobtail/pairing_diagnostics.h>
 
-/* Observe host connections only. Never change authentication or erase a bond. */
+/* Callbacks only observe host connections. Bond removal requires the repair key. */
 static struct k_spinlock status_lock;
 static struct bobtail_pairing_status statuses[ZMK_BLE_PROFILE_COUNT];
+static bt_addr_le_t observed_peers[ZMK_BLE_PROFILE_COUNT];
+static bool peer_valid[ZMK_BLE_PROFILE_COUNT];
 /* Zero means unassigned; otherwise this is the slot at connection establishment + 1. */
 static uint8_t connection_slots[CONFIG_BT_MAX_CONN];
 
@@ -42,6 +45,8 @@ static void host_connected(struct bt_conn *conn, uint8_t error) {
     status->attempts = attempts;
     status->stage = error ? 1 : 2;
     status->connect_error = error;
+    observed_peers[profile] = *bt_conn_get_dst(conn);
+    peer_valid[profile] = !error;
     connection_slots[index] = error ? 0 : (uint8_t)(profile + 1);
     k_spin_unlock(&status_lock, key);
 }
@@ -116,20 +121,80 @@ static int pairing_diagnostics_init(void) {
 
 SYS_INIT(pairing_diagnostics_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
-static void count_bond(const struct bt_bond_info *info, void *user_data) {
-    ARG_UNUSED(info);
-    (*(unsigned int *)user_data)++;
+struct bond_search {
+    bt_addr_le_t peer;
+    bool valid;
+    bool found;
+    unsigned int count;
+};
+
+static void inspect_bond(const struct bt_bond_info *info, void *user_data) {
+    struct bond_search *search = user_data;
+    search->count++;
+    if (search->valid && bt_addr_le_cmp(&info->addr, &search->peer) == 0) {
+        search->found = true;
+    }
 }
 
 void bobtail_pairing_snapshot(struct bobtail_pairing_status *status) {
     int profile = zmk_ble_active_profile_index();
+    struct bond_search search = {0};
     k_spinlock_key_t key = k_spin_lock(&status_lock);
     if (profile >= 0 && profile < ZMK_BLE_PROFILE_COUNT) {
         *status = statuses[profile];
+        search.peer = observed_peers[profile];
+        search.valid = peer_valid[profile];
     } else {
         memset(status, 0, sizeof(*status));
     }
     k_spin_unlock(&status_lock, key);
-    status->bonds = 0;
-    bt_foreach_bond(BT_ID_DEFAULT, count_bond, &status->bonds);
+    bt_foreach_bond(BT_ID_DEFAULT, inspect_bond, &search);
+    status->bonds = search.count;
+    status->peer_bond = search.found ? 1U : 0U;
+    int peer_profile = search.valid ? zmk_ble_profile_index(&search.peer) : -1;
+    status->peer_profile = peer_profile >= 0 ? (unsigned int)peer_profile + 1U : 0U;
+}
+
+int bobtail_pairing_clear_unmapped_failed_bond(int profile) {
+    if (profile < 0 || profile >= ZMK_BLE_PROFILE_COUNT ||
+        zmk_ble_active_profile_index() != profile || !zmk_ble_profile_is_open(profile)) {
+        return -EBUSY;
+    }
+    struct bond_search search = {0};
+    k_spinlock_key_t key = k_spin_lock(&status_lock);
+    const struct bobtail_pairing_status *status = &statuses[profile];
+    bool failed = status->security_error == BT_SECURITY_ERR_AUTH_REQUIREMENT ||
+                  status->pairing_error == BT_SECURITY_ERR_AUTH_REQUIREMENT;
+    if (peer_valid[profile] && failed && (status->stage == 6 || status->stage == 7)) {
+        search.peer = observed_peers[profile];
+        search.valid = true;
+    }
+    k_spin_unlock(&status_lock, key);
+    if (!search.valid) {
+        return 0;
+    }
+    /* Do not invalidate a host still assigned to any of the other profile slots. */
+    if (zmk_ble_profile_index(&search.peer) >= 0) {
+        return -EBUSY;
+    }
+    bt_foreach_bond(BT_ID_DEFAULT, inspect_bond, &search);
+    if (!search.found) {
+        return 0;
+    }
+    struct bt_conn *connection = bt_conn_lookup_addr_le(BT_ID_DEFAULT, &search.peer);
+    if (connection) {
+        bt_conn_unref(connection);
+        return -EBUSY;
+    }
+    if (zmk_ble_active_profile_index() != profile || !zmk_ble_profile_is_open(profile) ||
+        zmk_ble_profile_index(&search.peer) >= 0) {
+        return -EAGAIN;
+    }
+    int result = bt_unpair(BT_ID_DEFAULT, &search.peer);
+    if (result < 0) {
+        return result;
+    }
+    search.found = false;
+    bt_foreach_bond(BT_ID_DEFAULT, inspect_bond, &search);
+    return search.found ? -EIO : 0;
 }

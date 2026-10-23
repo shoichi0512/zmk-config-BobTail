@@ -45,7 +45,7 @@ static uint32_t command;
 static uint32_t boot_reset_cause;
 static int repair_profile;
 static unsigned int repair_error;
-static char diagnostic_text[192];
+static char diagnostic_text[224];
 static size_t text_length;
 static size_t text_position;
 static uint32_t pressed_key;
@@ -106,6 +106,15 @@ static void prepare_profile_pairing(void) {
         repair_error = EAGAIN;
         return;
     }
+#if IS_ENABLED(CONFIG_BOBTAIL_PAIRING_DIAGNOSTICS)
+    if (zmk_ble_active_profile_is_open()) {
+        int result = bobtail_pairing_clear_unmapped_failed_bond(repair_profile);
+        if (result < 0) {
+            repair_error = (unsigned int)-result;
+            return;
+        }
+    }
+#endif
     /* The standard API removes this slot's bond and restarts advertising.
      * It preserves the other host slots and the split peripheral's bond.
      */
@@ -137,6 +146,8 @@ static uint32_t diagnostic_keycode(char c) {
     case 'f': return F;
     case 'd': return D;
     case 'k': return K;
+    case 'j': return J;
+    case 'v': return V;
 #endif
     case ' ': return SPACE;
     case '\n': return ENTER;
@@ -181,13 +192,14 @@ static void diagnostic_work_handler(struct k_work *work) {
         bobtail_pairing_snapshot(&pairing);
         int length = snprintf(diagnostic_text, sizeof(diagnostic_text),
                               "u %u r %u h %u b %u o %u c %u e %u"
-                              " a %u l %u x %u s %u f %u d %u k %u\n",
+                              " a %u l %u x %u s %u f %u d %u k %u j %u v %u\n",
                               (unsigned int)(uint32_t)(k_uptime_get() / 1000),
                               (unsigned int)boot_reset_cause, clock_status(),
                               profile_index(), profile_open(), profile_connected(), repair_error,
                               pairing.attempts, pairing.stage, pairing.connect_error,
                               pairing.security_error, pairing.pairing_error,
-                              pairing.disconnect_reason, pairing.bonds);
+                              pairing.disconnect_reason, pairing.bonds,
+                              pairing.peer_bond, pairing.peer_profile);
 #else
         int length = snprintf(diagnostic_text, sizeof(diagnostic_text),
                               "u %u r %u h %u b %u o %u c %u e %u\n",

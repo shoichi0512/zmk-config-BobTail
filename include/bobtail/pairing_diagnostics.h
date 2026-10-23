@@ -9,6 +9,10 @@ struct bobtail_pairing_status {
     unsigned int pairing_error;
     unsigned int disconnect_reason;
     unsigned int bonds;
+    unsigned int peer_bond;
+    unsigned int peer_profile;
 };
 
 void bobtail_pairing_snapshot(struct bobtail_pairing_status *status);
+/* Called only by an explicit repair key on an open profile. */
+int bobtail_pairing_clear_unmapped_failed_bond(int profile);
