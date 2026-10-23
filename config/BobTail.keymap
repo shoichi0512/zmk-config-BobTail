@@ -27,13 +27,13 @@
             bindings = <&device_diagnostics 0>;
         };
 
-        clock_toggle: clock_toggle {
+        bluetooth_repair: bluetooth_repair {
             compatible = "zmk,behavior-macro";
-            label = "Diagnostic Clock Toggle";
+            label = "Re-pair Selected Bluetooth Slot";
             #binding-cells = <0>;
             wait-ms = <0>;
             tap-ms = <0>;
-            bindings = <&device_diagnostics 1>;
+            bindings = <&device_diagnostics 2>;
         };
 
         scroll_faster: scroll_faster {
@@ -662,7 +662,7 @@
         bluetooth_layer {
             display-name = "Bluetooth (hold extra Esc)";
             bindings = <
-                &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4  &out OUT_TOG  &out OUT_USB  &out OUT_BLE  &device_status  &clock_toggle
+                &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4  &out OUT_TOG  &out OUT_USB  &out OUT_BLE  &device_status  &bluetooth_repair
                 &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
                 &trans  &trans  &trans  &trans  &trans  &bt BT_CLR  &trans  &trans  &trans  &trans  &trans  &trans
                 &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
