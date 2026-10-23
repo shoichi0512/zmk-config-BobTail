@@ -4,6 +4,7 @@ rsource "drivers/pmw3610/Kconfig"
 config BOBTAIL_DISCONNECT_INACTIVE_HOSTS
     bool "Disconnect hosts outside the selected Bluetooth profile"
     depends on ZMK_BLE && ZMK_SPLIT_ROLE_CENTRAL && SETTINGS && SETTINGS_DYNAMIC_HANDLERS && BT_CTLR_FILTER_ACCEPT_LIST
+    select BT_FILTER_ACCEPT_LIST
     default n
 
 config BOBTAIL_PAIRING_DIAGNOSTICS
