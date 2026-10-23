@@ -21,6 +21,10 @@
 #include <zmk/ble.h>
 #endif
 
+#if IS_ENABLED(CONFIG_BOBTAIL_PAIRING_DIAGNOSTICS)
+#include <bobtail/pairing_diagnostics.h>
+#endif
+
 #if IS_ENABLED(CONFIG_HWINFO)
 #include <zephyr/drivers/hwinfo.h>
 #endif
@@ -41,7 +45,7 @@ static uint32_t command;
 static uint32_t boot_reset_cause;
 static int repair_profile;
 static unsigned int repair_error;
-static char diagnostic_text[96];
+static char diagnostic_text[192];
 static size_t text_length;
 static size_t text_position;
 static uint32_t pressed_key;
@@ -125,6 +129,15 @@ static uint32_t diagnostic_keycode(char c) {
     case 'o': return O;
     case 'c': return C;
     case 'e': return E;
+#if IS_ENABLED(CONFIG_BOBTAIL_PAIRING_DIAGNOSTICS)
+    case 'a': return A;
+    case 'l': return L;
+    case 'x': return X;
+    case 's': return S;
+    case 'f': return F;
+    case 'd': return D;
+    case 'k': return K;
+#endif
     case ' ': return SPACE;
     case '\n': return ENTER;
     default: return 0;
@@ -163,11 +176,25 @@ static void diagnostic_work_handler(struct k_work *work) {
     }
 
     if (phase == DIAGNOSTIC_CAPTURE) {
+#if IS_ENABLED(CONFIG_BOBTAIL_PAIRING_DIAGNOSTICS)
+        struct bobtail_pairing_status pairing;
+        bobtail_pairing_snapshot(&pairing);
+        int length = snprintf(diagnostic_text, sizeof(diagnostic_text),
+                              "u %u r %u h %u b %u o %u c %u e %u"
+                              " a %u l %u x %u s %u f %u d %u k %u\n",
+                              (unsigned int)(uint32_t)(k_uptime_get() / 1000),
+                              (unsigned int)boot_reset_cause, clock_status(),
+                              profile_index(), profile_open(), profile_connected(), repair_error,
+                              pairing.attempts, pairing.stage, pairing.connect_error,
+                              pairing.security_error, pairing.pairing_error,
+                              pairing.disconnect_reason, pairing.bonds);
+#else
         int length = snprintf(diagnostic_text, sizeof(diagnostic_text),
                               "u %u r %u h %u b %u o %u c %u e %u\n",
                               (unsigned int)(uint32_t)(k_uptime_get() / 1000),
                               (unsigned int)boot_reset_cause, clock_status(),
                               profile_index(), profile_open(), profile_connected(), repair_error);
+#endif
         if (length < 0 || (size_t)length >= sizeof(diagnostic_text)) {
             atomic_clear(&diagnostic_busy);
             return;

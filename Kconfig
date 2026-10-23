@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: MIT
 rsource "drivers/pmw3610/Kconfig"
 
+config BOBTAIL_PAIRING_DIAGNOSTICS
+    bool "Record host Bluetooth pairing results for the diagnostic key"
+    depends on ZMK_BLE && BT_SMP && ZMK_SPLIT_ROLE_CENTRAL
+    default n
+
 config BOBTAIL_PROFILE_BLE_NAMES
     bool "Include the selected profile number in the Bluetooth name"
     depends on ZMK_BLE && ZMK_SPLIT_ROLE_CENTRAL && SETTINGS && SETTINGS_DYNAMIC_HANDLERS
