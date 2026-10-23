@@ -11,6 +11,7 @@
 #include <zmk/ble.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/ble_active_profile_changed.h>
+#include <bobtail/profile_connection.h>
 
 LOG_MODULE_REGISTER(bobtail_profile_connection, CONFIG_ZMK_LOG_LEVEL);
 
@@ -18,8 +19,51 @@ BUILD_ASSERT(CONFIG_APPLICATION_INIT_PRIORITY > CONFIG_ZMK_BLE_INIT_PRIORITY,
              "Restore profiles before applying the host connection policy");
 
 static atomic_t profiles_ready;
+static atomic_t pairing_slot;
+static atomic_t pairing_deadline;
+#define PAIRING_WINDOW_MS 60000U
 static void enforce_profile_connections(struct k_work *work);
 K_WORK_DEFINE(profile_connection_work, enforce_profile_connections);
+static void pairing_expired(struct k_work *work);
+K_WORK_DELAYABLE_DEFINE(pairing_expiry_work, pairing_expired);
+
+bool bobtail_profile_advertising_allowed(void) {
+    if (!atomic_get(&profiles_ready)) {
+        return false;
+    }
+    int active = zmk_ble_active_profile_index();
+    if (active < 0 || active >= ZMK_BLE_PROFILE_COUNT) {
+        return false;
+    }
+    if (!zmk_ble_profile_is_open(active)) {
+        return true;
+    }
+    return atomic_get(&pairing_slot) == active + 1 &&
+           (int32_t)((uint32_t)atomic_get(&pairing_deadline) - k_uptime_get_32()) > 0;
+}
+
+int bobtail_profile_start_advertising(const struct bt_le_adv_param *params,
+                                    const struct bt_data *data, size_t count) {
+    if (!bobtail_profile_advertising_allowed()) {
+        return -EACCES;
+    }
+    int active = zmk_ble_active_profile_index();
+    struct bt_le_adv_param filtered = *params;
+    if (!zmk_ble_profile_is_open(active)) {
+        int result = bt_le_filter_accept_list_clear();
+        if (result != 0) {
+            return result;
+        }
+        result = bt_le_filter_accept_list_add(zmk_ble_profile_address(active));
+        if (result != 0) {
+            return result;
+        }
+        filtered.options |= BT_LE_ADV_OPT_FILTER_CONN;
+    } else {
+        filtered.options &= ~BT_LE_ADV_OPT_FILTER_CONN;
+    }
+    return bt_le_adv_start(&filtered, data, count, NULL, 0);
+}
 
 static void queue_connection_policy(void) {
     if (!atomic_get(&profiles_ready)) {
@@ -42,7 +86,8 @@ static bool keep_host(const bt_addr_le_t *peer) {
         return true;
     }
     /* An empty selected slot must still accept a new, unassigned host for pairing. */
-    return zmk_ble_profile_is_open(active) && zmk_ble_profile_index(peer) < 0;
+    return zmk_ble_profile_is_open(active) && bobtail_profile_advertising_allowed() &&
+           zmk_ble_profile_index(peer) < 0;
 }
 
 static void disconnect_inactive_host(struct bt_conn *conn, void *user_data) {
@@ -68,13 +113,58 @@ static void disconnect_inactive_host(struct bt_conn *conn, void *user_data) {
 static void enforce_profile_connections(struct k_work *work) {
     ARG_UNUSED(work);
     if (atomic_get(&profiles_ready)) {
+        int slot = atomic_get(&pairing_slot);
+        if (slot && (slot != zmk_ble_active_profile_index() + 1 ||
+                     !zmk_ble_profile_is_open(slot - 1) ||
+                     !bobtail_profile_advertising_allowed())) {
+            atomic_set(&pairing_slot, 0);
+            k_work_cancel_delayable(&pairing_expiry_work);
+        }
+        /* Stop or filter advertising before closing the old connection so the
+         * old host cannot immediately reconnect to the same Bluetooth identity.
+         * This API runs inside the patched ZMK advertising state machine.
+         */
+        int result = bobtail_profile_refresh_advertising();
+        if (result != 0) {
+            LOG_WRN("Profile advertising update failed: %d", result);
+        }
         /* Zephyr holds a connection reference for each callback. */
         bt_conn_foreach(BT_CONN_TYPE_LE, disconnect_inactive_host, NULL);
     }
 }
 
+static void pairing_expired(struct k_work *work) {
+    ARG_UNUSED(work);
+    atomic_set(&pairing_slot, 0);
+    queue_connection_policy();
+}
+
+int bobtail_profile_begin_pairing(void) {
+    int active = zmk_ble_active_profile_index();
+    if (!atomic_get(&profiles_ready) || active < 0 || active >= ZMK_BLE_PROFILE_COUNT ||
+        !zmk_ble_profile_is_open(active)) {
+        return -EAGAIN;
+    }
+    atomic_set(&pairing_slot, 0);
+    atomic_set(&pairing_deadline, (uint32_t)(k_uptime_get_32() + PAIRING_WINDOW_MS));
+    atomic_set(&pairing_slot, active + 1);
+    int result = k_work_reschedule(&pairing_expiry_work, K_MSEC(PAIRING_WINDOW_MS));
+    if (result < 0) {
+        atomic_set(&pairing_slot, 0);
+        return result;
+    }
+    queue_connection_policy();
+    return 0;
+}
+
 static int profile_connection_listener(const zmk_event_t *event) {
     ARG_UNUSED(event);
+    int slot = atomic_get(&pairing_slot);
+    if (slot && (slot != zmk_ble_active_profile_index() + 1 ||
+                 !zmk_ble_profile_is_open(slot - 1))) {
+        atomic_set(&pairing_slot, 0);
+        k_work_cancel_delayable(&pairing_expiry_work);
+    }
     queue_connection_policy();
     return ZMK_EV_EVENT_BUBBLE;
 }

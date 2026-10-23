@@ -25,6 +25,10 @@
 #include <bobtail/pairing_diagnostics.h>
 #endif
 
+#if IS_ENABLED(CONFIG_BOBTAIL_DISCONNECT_INACTIVE_HOSTS)
+#include <bobtail/profile_connection.h>
+#endif
+
 #if IS_ENABLED(CONFIG_HWINFO)
 #include <zephyr/drivers/hwinfo.h>
 #endif
@@ -120,6 +124,14 @@ static void prepare_profile_pairing(void) {
      */
     zmk_ble_clear_bonds();
     repair_error = zmk_ble_active_profile_is_open() ? 0U : EIO;
+#if IS_ENABLED(CONFIG_BOBTAIL_DISCONNECT_INACTIVE_HOSTS)
+    if (!repair_error) {
+        int result = bobtail_profile_begin_pairing();
+        if (result < 0) {
+            repair_error = (unsigned int)-result;
+        }
+    }
+#endif
 #else
     repair_error = ENOTSUP;
 #endif

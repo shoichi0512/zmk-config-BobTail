@@ -8,3 +8,11 @@ zephyr_library_sources_ifdef(CONFIG_BOBTAIL_PAIRING_DIAGNOSTICS src/ble_pairing_
 zephyr_library_sources_ifdef(CONFIG_BOBTAIL_PROFILE_BLE_NAMES src/profile_ble_name.c)
 zephyr_library_sources_ifdef(CONFIG_BOBTAIL_DISCONNECT_INACTIVE_HOSTS src/profile_connection_policy.c)
 zephyr_library_sources_ifdef(CONFIG_BOBTAIL_CLOCK_DIAGNOSTIC src/hfxo_hold.c)
+
+if(CONFIG_BOBTAIL_DISCONNECT_INACTIVE_HOSTS)
+  if(CMAKE_VERSION VERSION_LESS "3.20")
+    message(FATAL_ERROR "BobTail profile advertising policy requires CMake 3.20 or later")
+  endif()
+  include(cmake/profile_advertising.cmake)
+  cmake_language(DEFER DIRECTORY "${APPLICATION_SOURCE_DIR}" CALL bobtail_apply_profile_advertising_policy)
+endif()
