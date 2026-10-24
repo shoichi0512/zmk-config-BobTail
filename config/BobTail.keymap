@@ -8,6 +8,7 @@
 
 &mt {
     // Thumb Shift keys: prefer holding when another key is pressed.
+
     flavor = "hold-preferred";
     tapping-term-ms = <200>;
     quick-tap-ms = <0>;
@@ -579,11 +580,13 @@
             label = "Device Diagnostics";
             #binding-cells = <1>;
         };
+
         scroll_speed: scroll_speed {
             compatible = "bobtail,behavior-scroll-speed";
             label = "Ball Scroll Speed";
             #binding-cells = <1>;
         };
+
         encoder_msc_down_up: encoder_msc_down_up {
             compatible = "zmk,behavior-sensor-rotate";
             label = "ENCODER_MSC_DOWN_UP";
@@ -600,10 +603,10 @@
         default_layer {
             display-name = "Base (Keyball39)";
             bindings = <
-                &kp Q  &kp W  &kp E  &kp R  &kp T  &kp Y  &kp U  &kp I  &kp O  &kp P
-                &kp A  &kp S  &kp D  &kp F  &kp G  &none  &mo 5  &kp H  &kp J  &kp K  &kp L  &kp ENTER
-                &kp Z  &kp X  &kp C  &kp V  &kp B  &kp LC(Z)  &lt 6 ESC  &kp N  &kp M  &mkp MB1  &mkp MB2  &kp BACKSPACE
-                &mt LSHIFT LANG1  &kp LALT  &kp LCTRL  &mo 3  &kp SPACE  &kp TAB  &kp LGUI  &mo 1  &mt RSHIFT LANG2
+&kp Q             &kp W     &kp E      &kp R  &kp T                               &kp Y  &kp U  &kp I     &kp O     &kp P
+&kp A             &kp S     &kp D      &kp F  &kp G      &none          &mo 5     &kp H  &kp J  &kp K     &kp L     &kp ENTER
+&kp Z             &kp X     &kp C      &kp V  &kp B      &kp LC(Z)      &mo 6     &kp N  &kp M  &mkp MB1  &mkp MB2  &kp BACKSPACE
+&mt LSHIFT LANG1  &kp LALT  &kp LCTRL  &mo 3  &kp SPACE  &kp TAB        &kp LGUI  &mo 1                             &mt RSHIFT LANG2
             >;
 
             sensor-bindings = <&encoder_msc_down_up>;
@@ -612,70 +615,70 @@
         symbols_layer {
             display-name = "Symbols (Keyball39 L1)";
             bindings = <
-                &kp HOME  &kp UP  &kp N7  &kp N8  &kp N9  &jp_yen  &jp_bslh  &jp_lbkt  &jp_rbkt  &kp LS(CAPSLOCK)
-                &kp LEFT  &kp RIGHT  &kp N4  &kp N5  &kp N6  &trans  &scroll_faster  &jp_caret  &jp_minus  &jp_semi  &jp_colon  &kp ENTER
-                &kp END  &kp DOWN  &kp N1  &kp N2  &kp N3  &trans  &scroll_slower  &jp_at  &jp_slash  &jp_comma  &jp_dot  &kp DELETE
-                &mt LSHIFT INT_MUHENKAN  &kp LALT  &kp LCTRL  &kp N0  &kp SPACE  &kp TAB  &kp LGUI  &trans  &mt RSHIFT ESC
+&kp HOME                 &kp UP     &kp N7     &kp N8  &kp N9                                  &jp_yen    &jp_bslh   &jp_lbkt   &jp_rbkt   &kp LS(CAPSLOCK)
+&kp LEFT                 &kp RIGHT  &kp N4     &kp N5  &kp N6     &trans       &scroll_faster  &jp_caret  &jp_minus  &jp_semi   &jp_colon  &kp ENTER
+&kp END                  &kp DOWN   &kp N1     &kp N2  &kp N3     &trans       &scroll_slower  &jp_at     &jp_slash  &jp_comma  &jp_dot    &kp DELETE
+&mt LSHIFT INT_MUHENKAN  &kp LALT   &kp LCTRL  &kp N0  &kp SPACE  &kp TAB      &kp LGUI        &trans                                      &mt RSHIFT ESC
             >;
         };
 
         unused_layer_2 {
             display-name = "Unused (Keyball39 L2)";
             bindings = <
-                &none  &none  &none  &none  &none  &none  &none  &none  &none  &none
-                &none  &none  &none  &none  &none  &none  &none  &none  &none  &none  &none  &none
-                &none  &none  &none  &none  &none  &none  &none  &none  &none  &none  &none  &none
-                &none  &none  &none  &none  &none  &none  &none  &none  &none
+&none  &none  &none  &none  &none                    &none  &none  &none  &none  &none
+&none  &none  &none  &none  &none  &none      &none  &none  &none  &none  &none  &none
+&none  &none  &none  &none  &none  &none      &none  &none  &none  &none  &none  &none
+&none  &none  &none  &none  &none  &none      &none  &none                       &none
             >;
         };
 
         shortcuts_layer {
             display-name = "Shortcuts (Keyball39 L3)";
             bindings = <
-                &kp F1  &kp F2  &kp F3  &kp F4  &kp LC(T)  &kp LG(UP)  &kp LA(LEFT)  &kp F5  &kp LA(RIGHT)  &kp PAGE_UP
-                &kp F5  &kp F6  &kp F7  &kp F8  &kp LC(L)  &trans  &trans  &kp LG(DOWN)  &kp LC(LG(LEFT))  &kp LG(TAB)  &kp LC(LG(RIGHT))  &kp PAGE_DOWN
-                &kp F9  &kp F10  &kp F11  &kp F12  &kp LC(W)  &kp LC(Y)  &trans  &kp LG(D)  &kp PRINTSCREEN  &mkp MB1  &mkp MB2  &kp LC(L)
-                &kp LSHIFT  &kp LALT  &kp LCTRL  &trans  &kp LG(N4)  &kp LG(N3)  &kp LG(N2)  &kp LG(N1)  &kp RSHIFT
+&kp F1      &kp F2    &kp F3     &kp F4   &kp LC(T)                               &kp LG(UP)    &kp LA(LEFT)      &kp F5       &kp LA(RIGHT)      &kp PAGE_UP
+&kp F5      &kp F6    &kp F7     &kp F8   &kp LC(L)   &none           &trans      &kp LG(DOWN)  &kp LC(LG(LEFT))  &kp LG(TAB)  &kp LC(LG(RIGHT))  &kp PAGE_DOWN
+&kp F9      &kp F10   &kp F11    &kp F12  &kp LC(W)   &none           &trans      &kp LG(D)     &kp PRINTSCREEN   &mkp MB1     &mkp MB2           &kp LC(L)
+&kp LSHIFT  &kp LALT  &kp LCTRL  &trans   &kp LG(N4)  &kp LG(N3)      &kp LG(N2)  &kp LG(N1)                                                      &kp RSHIFT
             >;
         };
 
         automouse_layer {
             display-name = "Auto mouse (transparent)";
             bindings = <
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans                      &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans                          &trans
             >;
         };
 
         scroll_layer {
             display-name = "Ball scroll (hold extra key)";
             bindings = <
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans                      &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans                          &trans
             >;
         };
 
         bluetooth_layer {
             display-name = "Bluetooth (hold extra Esc)";
             bindings = <
-                &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4  &out OUT_TOG  &out OUT_USB  &out OUT_BLE  &device_status  &bluetooth_repair
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &bt BT_CLR  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
+&bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4                          &out OUT_TOG  &out OUT_USB  &out OUT_BLE  &device_status  &bluetooth_repair
+&trans        &trans        &trans        &trans        &trans        &trans          &trans  &trans        &trans        &trans        &trans          &trans
+&trans        &trans        &trans        &trans        &trans        &bt BT_CLR      &trans  &trans        &trans        &trans        &trans          &trans
+&trans        &trans        &trans        &trans        &trans        &trans          &trans  &trans                                                    &trans
             >;
         };
 
         unused_layer_7 {
             display-name = "Unused";
             bindings = <
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
-                &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans                      &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans  &trans  &trans  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans      &trans  &trans                          &trans
             >;
         };
     };
