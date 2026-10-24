@@ -99,8 +99,7 @@ static void enforce_profile_connections(struct k_work *work) {
         }
         /* Stop advertising in an empty slot before closing the old connection
          * so it cannot immediately reconnect. Leave saved-host advertising and
-         * the controller's shared filter list untouched: the filtered version
-         * prevented the split from reconnecting on hardware.
+         * the controller's shared filter list untouched.
          */
         int result = bobtail_profile_refresh_advertising();
         if (result != 0) {
