@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Keep ZMK's advertising state machine authoritative. Build a checked copy of
-# its source with two small hooks; never edit the dependency checkout in place.
+# its source with an advertising gate; never edit the dependency checkout in place.
 function(bobtail_replace_once variable needle replacement)
   string(FIND "${${variable}}" "${needle}" first)
   if(first LESS 0)
@@ -23,9 +23,6 @@ function(bobtail_apply_profile_advertising_policy)
   set(advertising_log "    LOG_DBG(\"advertising from %d to %d\", advertising_status, desired_adv);")
   bobtail_replace_once(ble_source "${advertising_log}"
     "    if (!bobtail_profile_advertising_allowed()) { desired_adv = ZMK_ADV_NONE; }\n${advertising_log}")
-  bobtail_replace_once(ble_source
-    "bt_le_adv_start(ZMK_ADV_CONN_NAME, zmk_ble_ad, ARRAY_SIZE(zmk_ble_ad), NULL, 0)"
-    "bobtail_profile_start_advertising(ZMK_ADV_CONN_NAME, zmk_ble_ad, ARRAY_SIZE(zmk_ble_ad))")
 
   set(patched "${PROJECT_BINARY_DIR}/bobtail_ble.c")
   file(WRITE "${patched}" "#include <bobtail/profile_connection.h>\n${ble_source}\nint bobtail_profile_refresh_advertising(void) {\n    int err = 0;\n    if (advertising_status != ZMK_ADV_NONE) { CHECKED_ADV_STOP(); }\n    return update_advertising();\n}\n")

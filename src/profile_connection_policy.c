@@ -42,29 +42,6 @@ bool bobtail_profile_advertising_allowed(void) {
            (int32_t)((uint32_t)atomic_get(&pairing_deadline) - k_uptime_get_32()) > 0;
 }
 
-int bobtail_profile_start_advertising(const struct bt_le_adv_param *params,
-                                    const struct bt_data *data, size_t count) {
-    if (!bobtail_profile_advertising_allowed()) {
-        return -EACCES;
-    }
-    int active = zmk_ble_active_profile_index();
-    struct bt_le_adv_param filtered = *params;
-    if (!zmk_ble_profile_is_open(active)) {
-        int result = bt_le_filter_accept_list_clear();
-        if (result != 0) {
-            return result;
-        }
-        result = bt_le_filter_accept_list_add(zmk_ble_profile_address(active));
-        if (result != 0) {
-            return result;
-        }
-        filtered.options |= BT_LE_ADV_OPT_FILTER_CONN;
-    } else {
-        filtered.options &= ~BT_LE_ADV_OPT_FILTER_CONN;
-    }
-    return bt_le_adv_start(&filtered, data, count, NULL, 0);
-}
-
 static void queue_connection_policy(void) {
     if (!atomic_get(&profiles_ready)) {
         return;
@@ -120,9 +97,10 @@ static void enforce_profile_connections(struct k_work *work) {
             atomic_set(&pairing_slot, 0);
             k_work_cancel_delayable(&pairing_expiry_work);
         }
-        /* Stop or filter advertising before closing the old connection so the
-         * old host cannot immediately reconnect to the same Bluetooth identity.
-         * This API runs inside the patched ZMK advertising state machine.
+        /* Stop advertising in an empty slot before closing the old connection
+         * so it cannot immediately reconnect. Leave saved-host advertising and
+         * the controller's shared filter list untouched: the filtered version
+         * prevented the split from reconnecting on hardware.
          */
         int result = bobtail_profile_refresh_advertising();
         if (result != 0) {
